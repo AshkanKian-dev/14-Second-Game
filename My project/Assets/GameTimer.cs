@@ -5,55 +5,55 @@ public class GameTimer : MonoBehaviour
 {
     public float gameDuration = 10f;
     public TextMeshProUGUI timerText;
-    public TextMeshProUGUI gameOverText;
     private bool timerRunning = false;
     private bool gameOverTriggered = false;
-    private float initialDuration;
 
     void Start()
     {
-        Debug.Log("GameTimer: Start called");
-        initialDuration = gameDuration;
-        UpdateTimerUI();
-        if (gameOverText != null)
+        if (timerText == null)
         {
-            gameOverText.gameObject.SetActive(false);
+            Debug.LogError("Timer Text is not assigned!");
+            return;
         }
+
+        ResetTimer();
+        Debug.Log("GameTimer: Initialized with duration: " + gameDuration);
     }
 
     void Update()
     {
-        if (timerRunning && !gameOverTriggered && gameDuration > 0)
-        {
-            gameDuration -= Time.deltaTime;
-            if (gameDuration <= 0)
-            {
-                gameDuration = 0;
-                EndGame();
-            }
-            UpdateTimerUI();
-        }
-    }
+        if (!timerRunning || gameOverTriggered) return;
 
-    public void StartTimer()
-    {
-        Debug.Log("GameTimer: StartTimer called");
-        if (!gameOverTriggered)
-        {
-            gameDuration = initialDuration;
-            timerRunning = true;
-            UpdateTimerUI();
-            Debug.Log($"GameTimer: timerRunning set to {timerRunning}");
-        }
-    }
-
-    void UpdateTimerUI()
-    {
-        int seconds = Mathf.FloorToInt(gameDuration);
-        timerText.text = $"00:{seconds:00}";
+        gameDuration -= Time.deltaTime;
         
-        // Change color to red when timer is below 3 seconds or at game over
-        if (gameDuration <= 3f || gameOverTriggered)
+        if (gameDuration <= 0)
+        {
+            Debug.Log("GameTimer: Time's up! Setting to game over state");
+            EndGame();
+        }
+        else
+        {
+            UpdateTimerDisplay();
+        }
+    }
+
+    void UpdateTimerDisplay()
+    {
+        if (timerText == null) return;
+
+        // If game is over, always show 00:00
+        if (gameOverTriggered)
+        {
+            timerText.text = "00:00";
+            timerText.color = Color.red;
+            return;
+        }
+
+        int seconds = Mathf.Max(0, Mathf.FloorToInt(gameDuration));
+        timerText.text = $"00:{seconds:00}";
+        Debug.Log($"GameTimer: Updating display to {timerText.text}");
+
+        if (gameDuration <= 3f)
         {
             timerText.color = Color.red;
         }
@@ -65,50 +65,69 @@ public class GameTimer : MonoBehaviour
 
     void EndGame()
     {
-        if (!gameOverTriggered)
-        {
-            Debug.Log("EndGame called");
-            gameOverTriggered = true;
-            timerRunning = false;
-            gameDuration = 0f; // Force timer to zero
-            UpdateTimerUI(); // Update UI to show zero
-            
-            // Only show game over if player hasn't won
-            PlayerController player = FindObjectOfType<PlayerController>();
-            if (player != null && player.score < PlayerController.SCORE_TO_WIN)
-            {
-                Time.timeScale = 0f;
-                if (gameOverText != null)
-                {
-                    gameOverText.gameObject.SetActive(true);
-                    gameOverText.text = "Game Over!";
-                    Debug.Log("Game Over text shown");
-                }
-                else
-                {
-                    Debug.LogWarning("gameOverText is null!");
-                }
+        if (gameOverTriggered) return;
+        Debug.Log("GameTimer: EndGame called");
+        
+        // Set timer to exactly zero
+        gameDuration = 0;
+        timerRunning = false;
+        gameOverTriggered = true;
 
-                // Play game over music
-                if (AudioManager.Instance != null)
-                {
-                    AudioManager.Instance.PlayGameOverMusic();
-                }
+        // Force display to show 00:00
+        if (timerText != null)
+        {
+            timerText.text = "00:00";
+            timerText.color = Color.red;
+            Debug.Log("GameTimer: Forced display to 00:00");
+        }
+
+        // Check if player has won
+        PlayerController player = FindObjectOfType<PlayerController>();
+        if (player != null && player.score < PlayerController.SCORE_TO_WIN)
+        {
+            if (GameOverManager.Instance != null)
+            {
+                Debug.Log("GameTimer: Triggering game over screen");
+                GameOverManager.Instance.ShowGameOver();
             }
         }
     }
 
-    public void ResetTimer()
+    void ResetTimer()
     {
-        gameDuration = initialDuration;
-        timerRunning = false;
-        gameOverTriggered = false;
-        UpdateTimerUI();
-        Time.timeScale = 1f;
-        
-        if (gameOverText != null)
+        // Don't reset if game is over
+        if (gameOverTriggered)
         {
-            gameOverText.gameObject.SetActive(false);
+            Debug.Log("GameTimer: Attempted to reset while game over - ignored");
+            return;
         }
+
+        Debug.Log("GameTimer: Resetting timer");
+        gameDuration = 10f;
+        timerRunning = false;
+        UpdateTimerDisplay();
+    }
+
+    public void StartTimer()
+    {
+        if (gameOverTriggered)
+        {
+            Debug.Log("GameTimer: Can't start timer - game is over");
+            return;
+        }
+        
+        Debug.Log("GameTimer: Starting timer");
+        gameDuration = 10f;
+        timerRunning = true;
+        UpdateTimerDisplay();
+    }
+
+    public void ResetGame()
+    {
+        Debug.Log("GameTimer: Resetting game");
+        gameOverTriggered = false;
+        gameDuration = 10f;
+        timerRunning = false;
+        UpdateTimerDisplay();
     }
 }

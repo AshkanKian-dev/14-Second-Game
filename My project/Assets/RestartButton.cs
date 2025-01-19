@@ -25,7 +25,7 @@ public class RestartButton : MonoBehaviour
         // Reset the timer
         if (gameTimer != null)
         {
-            gameTimer.ResetTimer();
+            gameTimer.ResetGame();
         }
         
         // Reset time scale
